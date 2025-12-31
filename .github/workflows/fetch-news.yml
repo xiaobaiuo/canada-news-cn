@@ -2,8 +2,8 @@ name: Fetch Canada News
 
 on:
   schedule:
-    - cron: '0 8 * * *' # 每天 8 点抓一次新闻
-  workflow_dispatch: # 手动运行
+    - cron: '0 8 * * *' # 每天 8 点自动运行
+  workflow_dispatch:
 
 jobs:
   fetch:
@@ -18,8 +18,7 @@ jobs:
           node-version: 18
 
       - name: Install dependencies
-        # ✅ 重点修改：不要指定不存在的版本号
-        run: npm install google-spreadsheet rss-parser openai
+        run: npm install google-spreadsheet rss-parser openai google-auth-library
 
       - name: Run fetchNews.js
         run: node fetchNews.js

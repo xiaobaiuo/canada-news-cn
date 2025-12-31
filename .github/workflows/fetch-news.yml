@@ -18,7 +18,8 @@ jobs:
           node-version: 18
 
       - name: Install dependencies
-        run: npm install google-spreadsheet@^4.2.0 rss-parser openai
+        # ✅ 重点修改：不要指定不存在的版本号
+        run: npm install google-spreadsheet rss-parser openai
 
       - name: Run fetchNews.js
         run: node fetchNews.js

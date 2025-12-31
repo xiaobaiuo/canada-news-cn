@@ -1,9 +1,9 @@
 // fetchNews.js
 import RSSParser from "rss-parser";
 import { GoogleSpreadsheet } from "google-spreadsheet";
+import { JWT } from "google-auth-library";
 import OpenAI from "openai";
 
-// 初始化 RSS Parser
 const parser = new RSSParser();
 
 // 从环境变量读取
@@ -11,22 +11,23 @@ const SHEET_ID = process.env.SHEET_ID;
 const creds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+// 用 jwtClient 替代旧认证
+const jwtClient = new JWT({
+  email: creds.client_email,
+  key: creds.private_key.replace(/\\n/g, "\n"),
+  scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+});
+
 async function run() {
   try {
-    // 连接 Google Sheets（最新版写法）
-    const doc = new GoogleSpreadsheet(SHEET_ID);
+    // 这行把 JWT 客户端传入 GoogleSpreadsheet 构造函数
+    const doc = new GoogleSpreadsheet(SHEET_ID, jwtClient);
 
-    // 使用 Service Account 授权
-    await doc.useServiceAccountAuth({
-      client_email: creds.client_email,
-      private_key: creds.private_key.replace(/\\n/g, "\n"),
-    });
-
+    // 载入表格信息
     await doc.loadInfo();
 
     const sheet = doc.sheetsByIndex[0];
 
-    // 抓取 CBC RSS 最新新闻
     const feed = await parser.parseURL(
       "https://www.cbc.ca/webfeed/rss/rss-topstories"
     );
@@ -35,7 +36,7 @@ async function run() {
     const titleEn = item.title;
     const summaryEn = item.contentSnippet || "";
 
-    // 使用 OpenAI 翻译成中文
+    // 用 OpenAI 翻译
     const prompt = `
 请把下面英文新闻翻译成中文（只要标题和摘要）：
 
@@ -50,7 +51,7 @@ Summary: ${summaryEn}
 
     const cn = completion.choices[0].message.content;
 
-    // 写入 Google Sheets
+    // 写入 Google Sheet
     await sheet.addRow({
       title_en: titleEn,
       title_cn: cn.split("\n")[0],
